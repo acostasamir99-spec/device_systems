@@ -13,18 +13,25 @@ from app.models.user_model import User
 from app.services.user_service import find_user_by_email
 from app.dependencies.user_dependencies import get_user_or_404
 from app.main import app
+from app.auth.security import create_access_token, get_password_hash
+
+
+@pytest.fixture(scope="session")
+def legacy_hash():
+    return get_password_hash("FixtureSegura123")
 
 
 @pytest.fixture
-def database(tmp_path):
+def database(tmp_path, legacy_hash, monkeypatch):
     engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}", connect_args={"check_same_thread": False})
     Base.metadata.create_all(engine)
+    monkeypatch.setattr("app.main.engine", engine)
     factory = sessionmaker(bind=engine)
     with factory() as db:
         db.add_all([
-            User(name="Administrador", email="admin@devicesystems.com", role="admin"),
-            User(name="Soporte", email="support@devicesystems.com", role="support"),
-            User(name="Usuario", email="user@devicesystems.com", role="user", is_active=False),
+            User(name="Administrador", email="admin@devicesystems.com", role="admin", hashed_password=legacy_hash),
+            User(name="Soporte", email="support@devicesystems.com", role="support", hashed_password=legacy_hash),
+            User(name="Usuario", email="user@devicesystems.com", role="user", is_active=False, hashed_password=legacy_hash),
         ])
         db.commit()
     yield engine, factory
@@ -40,6 +47,7 @@ def client(database):
     app.dependency_overrides[get_db] = override_db
     try:
         with TestClient(app) as test_client:
+            test_client.headers["Authorization"] = "Bearer " + create_access_token({"sub": "2"})
             yield test_client
     finally:
         app.dependency_overrides.clear()
@@ -238,14 +246,15 @@ def test_persistence_after_reconnecting(client, database, payload):
     {"name": None}, {"name": "ab"}, {"role": "invalid"}, {"email": None},
     {"email": "ADMIN@DEVICESYSTEMS.COM"}, {"is_active": None},
 ])
-def test_database_constraints(database, values):
+def test_database_constraints(database, values, legacy_hash):
     _, factory = database
     with factory() as db:
         user = User(**({"name": "Persona", "email": "new@example.com", "role": "user"} | values))
         # INSERT directo permite comprobar NULL sin aplicar defaults del ORM.
         fields = {"name": user.name, "email": user.email, "role": user.role, "is_active": values.get("is_active", True)}
+        fields["hashed_password"] = legacy_hash
         with pytest.raises(IntegrityError):
-            db.execute(text("INSERT INTO users (name, email, role, is_active) VALUES (:name, :email, :role, :is_active)"), fields)
+            db.execute(text("INSERT INTO users (name, email, role, is_active, hashed_password) VALUES (:name, :email, :role, :is_active, :hashed_password)"), fields)
             db.commit()
         db.rollback()
         assert find_user_by_email(db, "admin@devicesystems.com") is not None

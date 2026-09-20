@@ -12,7 +12,17 @@ UserRole = Literal["admin", "support", "user"]
 
 
 class UserBase(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "name": "Ana Pérez",
+                "email": "ana@sena.edu.co",
+                "role": "user",
+                "is_active": True
+            }
+        },
+    )
 
     name: UserName
     email: EmailStr
@@ -29,7 +39,14 @@ class UserUpdate(UserBase):
 
 
 class UserPatch(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "is_active": False
+            }
+        },
+    )
 
     name: UserName | None = None
     email: EmailStr | None = None
@@ -46,6 +63,19 @@ class UserPatch(BaseModel):
 
 
 class UserResponse(UserBase):
-    model_config = ConfigDict(from_attributes=True, extra="forbid")
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "id": 1,
+                "name": "Ana Pérez",
+                "email": "ana@sena.edu.co",
+                "role": "user",
+                "is_active": True,
+                "created_at": "2026-09-17T10:00:00"
+            }
+        },
+    )
     id: int
     created_at: datetime
