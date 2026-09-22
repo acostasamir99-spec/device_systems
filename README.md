@@ -2,8 +2,8 @@
 
 Actividad **GA1-220501096-01-AA1-EV11**. Implementación incremental sobre el
 CRUD existente de Users, Devices y Loans; conserva SQLAlchemy, SQLite, joins,
-filtros, Swagger, consola anterior y la migración previa. Rama de trabajo:
-`device_systems_security`. No se ha hecho push ni merge a main.
+filtros, Swagger, consola anterior y la migración previa. Rama de desarrollo EV11:
+`device_systems_security`. La implementación ya está integrada en `main`.
 
 ## Ejecutar la versión actual
 
